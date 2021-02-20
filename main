@@ -1,0 +1,155 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import scipy.stats as scistat
+from scipy.stats import norm
+import sklearn
+
+# Data Explorer Class
+
+# Methods
+
+# 1. Report the data types of each column/ field entered
+# 2. Tell me if the field is categorical, or numeric
+# 3. If it's numeric, have it run normality tests (use Shapiro-Wilk and KS)
+# 4. If it's categorical, plot bar graphs of each value by class
+# 5. If it's numerical, plot histograms AND boxplots by class
+# 6. Add a correlogram plotter
+# 7. One-hot encoding with a drop orginal option.
+
+
+class DataExplorer:
+
+    def __init__(self, data, target, name = "Data Explorer", is_numpy = False):
+        self.data = data
+        self.target = target
+        self.name = name
+        self.is_numpy = is_numpy
+        if is_numpy == True :
+            self.data = self.data.to_numpy()
+
+
+    def print_nm(self):
+
+        #Prints the name of the Data Explorer object
+        print(self.name, '\n')
+
+    def report_data_types(self):
+
+        # Prints all data types of the user-inputted data frame according to pandas.
+        print(self.data.dtypes, '\n')
+
+    def cat_num_checker(self):
+
+        #Uses pandas dytpes function to seperate numeric and non-numeric values.
+        #These partitions are then printed.
+
+        print("Non-Numeric/Categorical Cols:\n", self.data.select_dtypes(exclude=[np.number]).dtypes)
+
+        print("\nNumeric Cols:\n", self.data.select_dtypes(include=[np.number]).dtypes)
+
+    def normality_checker(self, alpha = .05):
+
+        #Alpha is set to be .05 by default, as is the case with most modern normality tests.
+        #However, the user can set their own alpha if they so choose.
+
+        #Seperates numeric only values from the data frame.
+
+        df_num = self.data.select_dtypes(include=[np.number])
+
+        print("\nWelcome to the Normality Checker!\n\nAlpha is currently set at " + str(alpha) + "\n\nAnalyzing Data... \n\nPatience is a virtue...\n\n")
+
+        #Iterates over numeric columns using KS and Shapiro tests.
+        #Plots a density chart and results of the normality tests for each column in the numeric data frame.
+        #If the two tests do not agree, throws inconclusive.
+        for column in df_num:
+
+            col_iterator = df_num[column]
+
+            shapiro_tester = scistat.shapiro(col_iterator)
+            ks_tester = scistat.kstest(col_iterator, 'norm')
+
+            if float(shapiro_tester.pvalue) >= alpha and float(ks_tester.pvalue) >= alpha:
+                result = "Normal"
+            elif float(shapiro_tester.pvalue) >= alpha >= float(ks_tester.pvalue):
+                result = "Inconclusive"
+            elif float(shapiro_tester.pvalue) <= alpha <= float(ks_tester.pvalue):
+                result = "Inconclusive"
+            else:
+                result = "Not Normal"
+
+            print("Column Name : ", column, "\n", shapiro_tester, "\n", ks_tester, "\n", "Result : ", result, "\n")
+
+            ax = sns.kdeplot(data=col_iterator, shade = True)
+            plt.show()
+
+    def bar_charter(self):
+
+        df_cat = self.data.select_dtypes(exclude=[np.number])
+
+        print("\nWelcome to the Bar Charter!\n")
+        print('Displaying bar charts for categorical features...\n')
+
+        for column in df_cat:
+            col_iterator = df_cat[column]
+            sns.countplot(x=col_iterator, data=col_iterator)
+            plt.show()
+
+    def hist_boxer(self):
+
+        df_num = self.data.select_dtypes(include=[np.number])
+
+        print("\nWelcome to the Histogram Boxer!\n")
+        print('Displaying histograms and bar charts for numeric features...\n')
+
+        for column in df_num:
+            sns.set_theme(style='whitegrid')
+            col_iterator = df_num[column]
+            sns.histplot(x=col_iterator, data=col_iterator)
+            plt.show()
+            sns.boxplot(x=col_iterator, data=col_iterator)
+            plt.show()
+
+    def correlogram_plotter(self):
+
+        print("\nWelcome to the the Correlogram Plotter!\n")
+        print('Displaying a correlogram for numeric features...\n')
+
+        df_num = self.data.select_dtypes(include=[np.number])
+        sns.heatmap(df_num.corr(), annot = True, fmt='.1g', vmin=-1, vmax=1, center= 0, cmap='coolwarm',linewidths=2, linecolor='black')
+        plt.show()
+
+    def one_hot_encoder(self, drop_original = True, drop_first = True):
+
+        print("\nWelcome to the the One Hot Encoder!\n")
+        print('One hot encoding your variables...\n')
+
+        #enc = OneHotEncoder(handle_unknown='ignore', categorical_features = categorical_feature_mask, sparse = False)
+
+        if drop_original == True and drop_first == True:
+            enc_df = pd.get_dummies(self.data, prefix_sep='_',drop_first = True)
+
+        elif drop_original == True and drop_first == False:
+            enc_df = pd.get_dummies(self.data, prefix_sep='_',drop_first = False)
+
+        elif drop_original == False and drop_first == True:
+            df_cat = self.data.select_dtypes(exclude=[np.number])
+
+            enc_col = pd.get_dummies(self.data, columns = df_cat.columns, prefix_sep='_', drop_first = True)
+
+            enc_df = pd.concat([self.data, enc_col], axis = 1)
+
+        elif drop_original == False and drop_first == False:
+            df_cat = self.data.select_dtypes(exclude=[np.number])
+
+            enc_col = pd.get_dummies(self.data, columns = df_cat.columns, prefix_sep='_', drop_first = False)
+
+            enc_df = pd.concat([self.data, enc_col], axis = 1)
+
+        with pd.option_context('display.max_rows', None, 'display.max_columns',
+                               None):
+            print(enc_df.head())
+
+        return enc_df
+
